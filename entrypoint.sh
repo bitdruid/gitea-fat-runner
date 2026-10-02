@@ -3,6 +3,9 @@ set -e
 
 rm -f /var/run/docker.pid /run/docker.pid 2>/dev/null || true
 
+# restart: always reuses the container, so wipe the inner docker state for a clean job
+rm -rf /var/lib/docker/* 2>/dev/null || true
+
 INSECURE_FLAGS=""
 for r in $(echo "$GITEA_INSECURE_REGISTRIES" | tr ',' ' '); do
   [ -n "$r" ] && INSECURE_FLAGS="$INSECURE_FLAGS --insecure-registry $r"
