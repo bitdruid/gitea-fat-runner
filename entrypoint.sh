@@ -28,10 +28,28 @@ while ! docker info >/dev/null 2>&1; do
   sleep 1
 done
 
-gitea-runner register --no-interactive --ephemeral \
+# optional polling intervals: an idle runner polls every 2s (backoff up to 5s) by default
+CONFIG_FLAGS=""
+if [ -n "$GITEA_RUNNER_FETCH_INTERVAL$GITEA_RUNNER_FETCH_INTERVAL_MAX$GITEA_RUNNER_FETCH_TIMEOUT" ]; then
+  CONFIG_FILE=/tmp/gitea-runner-config.yaml
+  echo "runner:" > "$CONFIG_FILE"
+  if [ -n "$GITEA_RUNNER_FETCH_INTERVAL" ]; then
+    echo "  fetch_interval: $GITEA_RUNNER_FETCH_INTERVAL" >> "$CONFIG_FILE"
+    # backoff max must not be below the interval
+    echo "  fetch_interval_max: ${GITEA_RUNNER_FETCH_INTERVAL_MAX:-$GITEA_RUNNER_FETCH_INTERVAL}" >> "$CONFIG_FILE"
+  elif [ -n "$GITEA_RUNNER_FETCH_INTERVAL_MAX" ]; then
+    echo "  fetch_interval_max: $GITEA_RUNNER_FETCH_INTERVAL_MAX" >> "$CONFIG_FILE"
+  fi
+  if [ -n "$GITEA_RUNNER_FETCH_TIMEOUT" ]; then
+    echo "  fetch_timeout: $GITEA_RUNNER_FETCH_TIMEOUT" >> "$CONFIG_FILE"
+  fi
+  CONFIG_FLAGS="--config $CONFIG_FILE"
+fi
+
+gitea-runner $CONFIG_FLAGS register --no-interactive --ephemeral \
   --instance "$GITEA_INSTANCE_URL" \
   --token   "$GITEA_RUNNER_REGISTRATION_TOKEN" \
   --name    "${GITEA_RUNNER_NAME:-$(hostname)}" \
   --labels  "$GITEA_RUNNER_LABELS"
 
-exec gitea-runner daemon
+exec gitea-runner $CONFIG_FLAGS daemon

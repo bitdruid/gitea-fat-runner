@@ -88,6 +88,9 @@ Gitea standard envs are used + `GITEA_INSECURE_REGISTRIES` is baked in.
 | `GITEA_RUNNER_LABELS`             | no       | —        | Comma-separated labels (e.g. `docker,fuse-overlayfs`) used for job routing                        |
 | `GITEA_INSECURE_REGISTRIES`       | no       | empty    | Comma-separated list of registries allowed over HTTP (passed to dockerd as `--insecure-registry`) |
 | `GITEA_RUNNER_EPHEMERAL`          | no       | —        | Set to `"1"` for ephemeral mode (auto-deregister after each job)                                  |
+| `GITEA_RUNNER_FETCH_INTERVAL`     | no       | `2s`     | How often an idle runner polls Gitea for jobs. Raise it (e.g. `60s`) to cut idle CPU wakeups      |
+| `GITEA_RUNNER_FETCH_INTERVAL_MAX` | no       | `5s`     | Upper bound of the idle backoff. Defaults to `GITEA_RUNNER_FETCH_INTERVAL` when that is set       |
+| `GITEA_RUNNER_FETCH_TIMEOUT`      | no       | `5s`     | Timeout of a single fetch request (capped at 60s by the runner)                                   |
 
 ## How the entrypoint works
 
@@ -95,8 +98,9 @@ Gitea standard envs are used + `GITEA_INSECURE_REGISTRIES` is baked in.
 2. Parses `GITEA_INSECURE_REGISTRIES` into dockerd flags
 3. Starts `dockerd` with `fuse-overlayfs`, backgrounded, logging to `/var/log/dockerd.log`
 4. Polls `docker info` for up to 30 seconds until the daemon is ready
-5. Registers an **ephemeral** runner (`--no-interactive --ephemeral`) against the Gitea instance
-6. Execs into `gitea-runner daemon`, which picks up jobs from the queue
+5. If any `GITEA_RUNNER_FETCH_*` variable is set, writes them to `/tmp/gitea-runner-config.yaml` and passes it via `--config`
+6. Registers an **ephemeral** runner (`--no-interactive --ephemeral`) against the Gitea instance
+7. Execs into `gitea-runner daemon`, which picks up jobs from the queue
 
 ## Building
 
